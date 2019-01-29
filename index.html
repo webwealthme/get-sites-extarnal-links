@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>Document</title>
+</head>
+
+<body>
+    <h1>Get all Elements</h1>
+    <p style="color:red">Note: In order for this to work, you will need to instal and click on it's icon to activate,
+        this <a href="https://chrome.google.com/webstore/detail/allow-cors-access-control/lhobafahddgcelffkeicbaginigeejlf?hl=en"
+            target="_blank">chrome plugin</a></p>
+    <div id="body">
+        <div id="form">
+            <form>
+                <textarea style="width:50%;height:100px" id="sitesinput" placeholder="Enter sites here separated by new line"></textarea><br>
+                <input type="submit" id="submit" value="submit">
+
+            </form>
+            <button id="download" style="display:none">Download CSV</button>
+        </div>
+        <div id="response"></div>
+    </div>
+
+    <script>
+
+        // initialize global variables
+        var output2 = "";
+        var globalarr = [];
+
+        // handles downloading of file when download button is clicked
+        document.getElementById("download").addEventListener("click", function (event) {
+            event.preventDefault();
+            downloadcsv();
+        });
+
+
+
+
+        //console.log(ar);
+
+        function downloadcsv() {
+            //const rows = [["name1", "city1", "some other info"], ["name2", "city2", "more info"]];
+            var rows = globalarr;
+            let csvContent = "data:text/csv;charset=utf-8," + rows.map(e => e.join(",")).join("\n");
+
+            var encodedUri = encodeURI(csvContent);
+            var link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "my_data.csv");
+            document.body.appendChild(link); // Required for FF
+
+            link.click(); // This will download the data file named "my_data.csv".
+        }
+
+        
+
+        function reqListener() {
+
+            // console.log(this.response);
+            var output = "";
+
+            // get all the links on site
+            output = this.response
+                .getElementsByTagName('a');
+
+            // output on page all the links with anchor
+            output2 += `<div>
+    <h2><a href="${output[0].baseURI}" target="_blank">${output[0].baseURI}</a></h2>`;
+                // iterate each link result
+            for (let item of output) {
+                //console.log(output);
+
+                // get only external links and ignore mailto and tel
+                if (!item.href.includes(item.baseURI) && item.href && !item.href.includes("mailto:") &&
+                    !item.href.includes("tel:")) {
+
+                        // handle links with image instead of text, get alt tag if set
+                    if (!item.innerText) { //console.log(item);
+                        if (item.getElementsByTagName('img')[0] && item.getElementsByTagName('img')[0].alt) {
+                            item.innerText = "IMAGE ALT: " + item.getElementsByTagName('img')[0].alt;
+                        } else {
+                            item.innerText = "IMAGE ALT: none";
+                        }
+
+                    }
+
+                    output2 +=
+                        `<a href="${item.href}" target="_blank">${item.href}</a> - <b>${item.innerText}</b> <br>`;
+                        // add to csv
+                    globalarr.push([output[0].baseURI, item.href, item.innerText.replace(/(\r\n|\n|\r)/gm, "")]);
+
+                }
+                //document.getElementById(body).innerHTML = output2;
+
+            }
+            output2 += `</div><br><hr><br>`;
+
+            document.getElementById("response").innerHTML = output2;
+        }
+
+        // listen for the submit button click
+        document.getElementById("submit").addEventListener("click", function (event) {
+            event.preventDefault();
+
+            var stringArray = document.getElementById('sitesinput').value.split('\n');
+            var arr = stringArray;
+            console.log(arr);
+
+            var linkiterator = 0;
+            for (var ar of arr) {
+                linkiterator++;
+
+                // if no link due to extra space on input, ignore rest
+                if (!ar) {
+                    continue;
+                }
+
+                // add http:// if not present
+                if (!ar.includes("http://") && ar) {
+                    ar = "http://" + ar;
+                }
+
+                // make ajax request
+                var oReq = new XMLHttpRequest();
+                oReq.addEventListener("load", reqListener);
+                oReq.open("GET", ar);
+                oReq.onerror = function () {
+                    //console.log("** An error occurred during the transaction");
+                    output2 += `<div>
+                                <h2 style="color:red">${ar} ERROR</h2>
+                                </div><br>
+                                <hr><br>`;
+                    globalarr.push([ar, "error", "error"]);
+                };
+                oReq.responseType = "document";
+                //oReq.timeout = 2000;
+                oReq.send();
+
+            }
+
+            if (linkiterator == arr.length) {
+                document.getElementById("download").style.display = "block";
+            }
+
+            console.log(globalarr);
+
+        });
+
+
+    </script>
+</body>
+
+</html>
